@@ -1,8 +1,8 @@
 import datetime
 
 from jwt import ExpiredSignatureError, InvalidTokenError
+from flask import current_app
 
-from flask_jwt_extended.config import config
 from flask_jwt_extended.exceptions import (
     JWTDecodeError, NoAuthorizationError, InvalidHeaderError, WrongTokenError,
     RevokedTokenError, FreshTokenRequired, CSRFError, UserLoadError,
@@ -20,6 +20,7 @@ from flask_jwt_extended.tokens import (
     encode_refresh_token, encode_access_token
 )
 from flask_jwt_extended.utils import get_jwt_identity
+from flask_jwt_extended.config import build_config
 
 
 class JWTManager(object):
@@ -129,6 +130,44 @@ class JWTManager(object):
         @app.errorhandler(UserClaimsVerificationError)
         def handle_failed_user_claims_verification(e):
             return self._claims_verification_failed_callback()
+
+    @staticmethod
+    def get_config_dictionary():
+        """
+        Returns the flask-jwt-extended configuration for the current
+        flask application
+        """
+        return {
+            'jwt_token_location': current_app.config['JWT_TOKEN_LOCATION'],
+            'jwt_header_name': current_app.config['JWT_HEADER_NAME'],
+            'jwt_header_type': current_app.config['JWT_HEADER_TYPE'],
+            'jwt_access_cookie_name': current_app.config['JWT_ACCESS_COOKIE_NAME'],
+            'jwt_refresh_cookie_name': current_app.config['JWT_REFRESH_COOKIE_NAME'],
+            'jwt_access_cookie_path': current_app.config['JWT_ACCESS_COOKIE_PATH'],
+            'jwt_refresh_cookie_path': current_app.config['JWT_REFRESH_COOKIE_PATH'],
+            'jwt_cookie_secure': current_app.config['JWT_COOKIE_SECURE'],
+            'jwt_cookie_domain': current_app.config['JWT_COOKIE_DOMAIN'],
+            'jwt_session_cookie': current_app.config['JWT_SESSION_COOKIE'],
+            'jwt_cookie_csrf_protect': current_app.config['JWT_COOKIE_CSRF_PROTECT'],
+            'jwt_csrf_methods': current_app.config['JWT_CSRF_METHODS'],
+            'jwt_access_csrf_header_name': current_app.config['JWT_ACCESS_CSRF_HEADER_NAME'],
+            'jwt_refresh_csrf_header_name': current_app.config['JWT_REFRESH_CSRF_HEADER_NAME'],
+            'jwt_csrf_in_cookies': current_app.config['JWT_CSRF_IN_COOKIES'],
+            'jwt_access_csrf_cookie_name': current_app.config['JWT_ACCESS_CSRF_COOKIE_NAME'],
+            'jwt_refresh_csrf_cookie_name': current_app.config['JWT_REFRESH_CSRF_COOKIE_NAME'],
+            'jwt_access_csrf_cookie_path': current_app.config['JWT_ACCESS_CSRF_COOKIE_PATH'],
+            'jwt_refresh_csrf_cookie_path': current_app.config['JWT_REFRESH_CSRF_COOKIE_PATH'],
+            'jwt_access_token_expires': current_app.config['JWT_ACCESS_TOKEN_EXPIRES'],
+            'jwt_refresh_token_expires': current_app.config['JWT_REFRESH_TOKEN_EXPIRES'],
+            'jwt_algorithm': current_app.config['JWT_ALGORITHM'],
+            'jwt_secret_key': current_app.config['JWT_SECRET_KEY'],
+            'jwt_private_key': current_app.config['JWT_PRIVATE_KEY'],
+            'jwt_public_key': current_app.config['JWT_PUBLIC_KEY'],
+            'jwt_blacklist_enabled': current_app.config['JWT_BLACKLIST_ENABLED'],
+            'jwt_blacklist_token_checks': current_app.config['JWT_BLACKLIST_TOKEN_CHECKS'],
+            'jwt_identity_claim': current_app.config['JWT_IDENTITY_CLAIM'],
+            'jwt_user_claims': current_app.config['JWT_USER_CLAIMS'],
+        }
 
     @staticmethod
     def _set_default_configuration_options(app):
@@ -371,7 +410,9 @@ class JWTManager(object):
         self._claims_verification_failed_callback = callback
         return callback
 
-    def _create_refresh_token(self, identity, expires_delta=None):
+    def _create_refresh_token(self, identity, expires_delta=None, **kwargs):
+        config = build_config(**kwargs)
+
         if expires_delta is None:
             expires_delta = config.refresh_expires
 
@@ -385,7 +426,9 @@ class JWTManager(object):
         )
         return refresh_token
 
-    def _create_access_token(self, identity, fresh=False, expires_delta=None):
+    def _create_access_token(self, identity, fresh=False, expires_delta=None, **kwargs):
+        config = build_config(**kwargs)
+
         if expires_delta is None:
             expires_delta = config.access_expires
 
@@ -397,7 +440,8 @@ class JWTManager(object):
             fresh=fresh,
             user_claims=self._user_claims_callback(identity),
             csrf=config.csrf_protect,
-            identity_claim=config.identity_claim
+            identity_claim=config.identity_claim,
+            user_claim_key=config.user_claims
         )
         return access_token
 

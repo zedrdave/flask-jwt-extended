@@ -7,7 +7,7 @@ try:
 except ImportError:  # pragma: no cover
     from flask import _request_ctx_stack as ctx_stack
 
-from flask_jwt_extended.config import config
+from flask_jwt_extended.config import build_config
 from flask_jwt_extended.exceptions import (
     InvalidHeaderError, NoAuthorizationError, WrongTokenError,
     FreshTokenRequired, CSRFError, UserLoadError, RevokedTokenError,
@@ -20,7 +20,7 @@ from flask_jwt_extended.utils import (
 )
 
 
-def jwt_required(fn):
+def jwt_required(fn, **option_overrides):
     """
     A decorator to protect a Flask endpoint.
 
@@ -32,7 +32,8 @@ def jwt_required(fn):
     """
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        jwt_data = _decode_jwt_from_request(request_type='access')
+        config = build_config(**option_overrides)
+        jwt_data = _decode_jwt_from_request(request_type='access', config=config)
         ctx_stack.top.jwt = jwt_data
         if not verify_token_claims(jwt_data[config.user_claims]):
             raise UserClaimsVerificationError('User claims verification failed')
@@ -41,7 +42,7 @@ def jwt_required(fn):
     return wrapper
 
 
-def jwt_optional(fn):
+def jwt_optional(fn, **option_overrides):
     """
     A decorator to optionally protect a Flask endpoint
 
@@ -58,7 +59,8 @@ def jwt_optional(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         try:
-            jwt_data = _decode_jwt_from_request(request_type='access')
+            config = build_config(**option_overrides)
+            jwt_data = _decode_jwt_from_request(request_type='access', config=config)
             ctx_stack.top.jwt = jwt_data
             if not verify_token_claims(jwt_data[config.user_claims]):
                 raise UserClaimsVerificationError('User claims verification failed')
@@ -69,7 +71,7 @@ def jwt_optional(fn):
     return wrapper
 
 
-def fresh_jwt_required(fn):
+def fresh_jwt_required(fn, **option_overrides):
     """
     A decorator to protect a Flask endpoint.
 
@@ -81,7 +83,8 @@ def fresh_jwt_required(fn):
     """
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        jwt_data = _decode_jwt_from_request(request_type='access')
+        config = build_config(**option_overrides)
+        jwt_data = _decode_jwt_from_request(request_type='access', config=config)
         ctx_stack.top.jwt = jwt_data
         if not jwt_data['fresh']:
             raise FreshTokenRequired('Fresh token required')
@@ -92,7 +95,7 @@ def fresh_jwt_required(fn):
     return wrapper
 
 
-def jwt_refresh_token_required(fn):
+def jwt_refresh_token_required(fn, **option_overrides):
     """
     A decorator to protect a Flask endpoint.
 
@@ -101,7 +104,8 @@ def jwt_refresh_token_required(fn):
     """
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        jwt_data = _decode_jwt_from_request(request_type='refresh')
+        config = build_config(**option_overrides)
+        jwt_data = _decode_jwt_from_request(request_type='refresh', config=config)
         ctx_stack.top.jwt = jwt_data
         _load_user(jwt_data[config.identity_claim])
         return fn(*args, **kwargs)
@@ -117,7 +121,7 @@ def _load_user(identity):
             ctx_stack.top.jwt_user = user
 
 
-def _token_blacklisted(decoded_token, request_type):
+def _token_blacklisted(decoded_token, request_type, config):
     if not config.blacklist_enabled:
         return False
     if not has_token_in_blacklist_callback():
@@ -132,7 +136,7 @@ def _token_blacklisted(decoded_token, request_type):
     return False
 
 
-def _decode_jwt_from_headers():
+def _decode_jwt_from_headers(config):
     header_name = config.header_name
     header_type = config.header_type
 
@@ -160,11 +164,12 @@ def _decode_jwt_from_headers():
         secret=config.decode_key,
         algorithm=config.algorithm,
         csrf=False,
-        identity_claim=config.identity_claim
+        identity_claim=config.identity_claim,
+        user_claim_key=config.user_claims
     )
 
 
-def _decode_jwt_from_cookies(request_type):
+def _decode_jwt_from_cookies(request_type, config):
     if request_type == 'access':
         cookie_key = config.access_cookie_name
         csrf_header_key = config.access_csrf_header_name
@@ -181,7 +186,8 @@ def _decode_jwt_from_cookies(request_type):
         secret=config.decode_key,
         algorithm=config.algorithm,
         csrf=config.csrf_protect,
-        identity_claim=config.identity_claim
+        identity_claim=config.identity_claim,
+        user_claim_key=config.user_claims
     )
 
     # Verify csrf double submit tokens match if required
@@ -197,29 +203,29 @@ def _decode_jwt_from_cookies(request_type):
     return decoded_token
 
 
-def _decode_jwt_from_request(request_type):
+def _decode_jwt_from_request(request_type, config):
     # We have three cases here, having jwts in both cookies and headers is
     # valid, or the jwt can only be saved in one of cookies or headers. Check
     # all cases here.
     if config.jwt_in_cookies and config.jwt_in_headers:
         try:
-            decoded_token = _decode_jwt_from_cookies(request_type)
+            decoded_token = _decode_jwt_from_cookies(request_type, config)
         except NoAuthorizationError:
             try:
-                decoded_token = _decode_jwt_from_headers()
+                decoded_token = _decode_jwt_from_headers(config)
             except NoAuthorizationError:
                 raise NoAuthorizationError("Missing JWT in headers and cookies")
     elif config.jwt_in_headers:
-        decoded_token = _decode_jwt_from_headers()
+        decoded_token = _decode_jwt_from_headers(config)
     else:
-        decoded_token = _decode_jwt_from_cookies(request_type)
+        decoded_token = _decode_jwt_from_cookies(request_type, config)
 
     # Make sure the type of token we received matches the request type we expect
     if decoded_token['type'] != request_type:
         raise WrongTokenError('Only {} tokens can access this endpoint'.format(request_type))
 
     # If blacklisting is enabled, see if this token has been revoked
-    if _token_blacklisted(decoded_token, request_type):
+    if _token_blacklisted(decoded_token, request_type, config):
         raise RevokedTokenError('Token has been revoked')
 
     return decoded_token

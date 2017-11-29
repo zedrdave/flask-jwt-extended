@@ -4,7 +4,6 @@ import uuid
 import jwt
 
 from flask_jwt_extended.exceptions import JWTDecodeError
-from flask_jwt_extended.config import config
 
 
 def _create_csrf_token():
@@ -26,7 +25,7 @@ def _encode_jwt(additional_token_data, expires_delta, secret, algorithm):
 
 
 def encode_access_token(identity, secret, algorithm, expires_delta, fresh,
-                        user_claims, csrf, identity_claim):
+                        user_claims, csrf, identity_claim, user_claim_key):
     """
     Creates a new encoded (utf-8) access token.
 
@@ -53,7 +52,7 @@ def encode_access_token(identity, secret, algorithm, expires_delta, fresh,
 
     # Add `user_claims` only is not empty or None.
     if user_claims:
-        token_data[config.user_claims] = user_claims
+        token_data[user_claim_key] = user_claims
 
     if csrf:
         token_data['csrf'] = _create_csrf_token()
@@ -83,7 +82,8 @@ def encode_refresh_token(identity, secret, algorithm, expires_delta, csrf, ident
     return _encode_jwt(token_data, expires_delta, secret, algorithm)
 
 
-def decode_jwt(encoded_token, secret, algorithm, csrf, identity_claim):
+def decode_jwt(encoded_token, secret, algorithm, csrf, identity_claim,
+               user_claim_key=None):
     """
     Decodes an encoded JWT
 
@@ -108,8 +108,8 @@ def decode_jwt(encoded_token, secret, algorithm, csrf, identity_claim):
     if data['type'] == 'access':
         if 'fresh' not in data:
             raise JWTDecodeError("Missing claim: fresh")
-        if config.user_claims not in data:
-            data[config.user_claims] = {}
+        if user_claim_key not in data:
+            data[user_claim_key] = {}
     if csrf:
         if 'csrf' not in data:
             raise JWTDecodeError("Missing claim: csrf")

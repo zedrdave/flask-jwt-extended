@@ -6,7 +6,7 @@ try:
 except ImportError:  # pragma: no cover
     from flask import _request_ctx_stack as ctx_stack
 
-from flask_jwt_extended.config import config
+from flask_jwt_extended.config import build_config
 from flask_jwt_extended.tokens import decode_jwt
 
 
@@ -28,6 +28,7 @@ def get_jwt_identity():
     In a protected endpoint, this will return the identity of the JWT that is
     accessing this endpoint. If no JWT is present,`None` is returned instead.
     """
+    config = build_config()
     return get_raw_jwt().get(config.identity_claim, None)
 
 
@@ -37,6 +38,7 @@ def get_jwt_claims():
     in the JWT that is accessing the endpoint. If no custom user claims are
     present, an empty dict is returned instead.
     """
+    config = build_config()
     return get_raw_jwt().get(config.user_claims, {})
 
 
@@ -60,23 +62,25 @@ def get_jti(encoded_token):
     return decode_token(encoded_token).get('jti')
 
 
-def decode_token(encoded_token):
+def decode_token(encoded_token, **option_overrides):
     """
     Returns the decoded token (python dict) from an encoded JWT. This does all
     the checks to insure that the decoded token is valid before returning it.
 
     :param encoded_token: The encoded JWT to decode into a python dict.
     """
+    config = build_config(**option_overrides)
     return decode_jwt(
         encoded_token=encoded_token,
         secret=config.decode_key,
         algorithm=config.algorithm,
         csrf=config.csrf_protect,
-        identity_claim=config.identity_claim
+        identity_claim=config.identity_claim,
+        user_claim_key=config.user_claims
     )
 
 
-def _get_jwt_manager():
+def get_jwt_manager():
     try:
         return current_app.extensions['flask-jwt-extended']
     except KeyError:  # pragma: no cover
@@ -103,7 +107,7 @@ def create_access_token(identity, fresh=False, expires_delta=None):
                           (see :ref:`Configuration Options`)
     :return: An encoded access token
     """
-    jwt_manager = _get_jwt_manager()
+    jwt_manager = get_jwt_manager()
     return jwt_manager._create_access_token(identity, fresh, expires_delta)
 
 
@@ -123,47 +127,49 @@ def create_refresh_token(identity, expires_delta=None):
                           (see :ref:`Configuration Options`)
     :return: An encoded access token
     """
-    jwt_manager = _get_jwt_manager()
+    jwt_manager = get_jwt_manager()
     return jwt_manager._create_refresh_token(identity, expires_delta)
 
 
 def has_user_loader():
-    jwt_manager = _get_jwt_manager()
+    jwt_manager = get_jwt_manager()
     return jwt_manager._user_loader_callback is not None
 
 
 def user_loader(*args, **kwargs):
-    jwt_manager = _get_jwt_manager()
+    jwt_manager = get_jwt_manager()
     return jwt_manager._user_loader_callback(*args, **kwargs)
 
 
 def has_token_in_blacklist_callback():
-    jwt_manager = _get_jwt_manager()
+    jwt_manager = get_jwt_manager()
     return jwt_manager._token_in_blacklist_callback is not None
 
 
 def token_in_blacklist(*args, **kwargs):
-    jwt_manager = _get_jwt_manager()
+    jwt_manager = get_jwt_manager()
     return jwt_manager._token_in_blacklist_callback(*args, **kwargs)
 
 
 def verify_token_claims(*args, **kwargs):
-    jwt_manager = _get_jwt_manager()
+    jwt_manager = get_jwt_manager()
     return jwt_manager._claims_verification_callback(*args, **kwargs)
 
 
-def get_csrf_token(encoded_token):
+def get_csrf_token(encoded_token, **option_overrides):
+    config = build_config(**option_overrides)
     token = decode_jwt(
-        encoded_token,
-        config.decode_key,
-        config.algorithm,
+        encoded_token=encoded_token,
+        secret=config.decode_key,
+        algorithm=config.algorithm,
         csrf=True,
-        identity_claim=config.identity_claim
+        identity_claim=config.identity_claim,
+        user_claim_key=config.user_claims
     )
     return token['csrf']
 
 
-def set_access_cookies(response, encoded_access_token, max_age=None):
+def set_access_cookies(response, encoded_access_token, max_age=None, **option_overrides):
     """
     Takes a flask response object, and an encoded access token, and configures
     the response to set in the access token in a cookie. If `JWT_CSRF_IN_COOKIES`
@@ -177,6 +183,8 @@ def set_access_cookies(response, encoded_access_token, max_age=None):
                     Otherwise, it will use this as the cookies `max-age`.
                     Values should be the number of seconds (as an integer).
     """
+    config = build_config(**option_overrides)
+
     if not config.jwt_in_cookies:
         raise RuntimeWarning("set_access_cookies() called without "
                              "'JWT_TOKEN_LOCATION' configured to use cookies")
@@ -201,7 +209,7 @@ def set_access_cookies(response, encoded_access_token, max_age=None):
                             path=config.access_csrf_cookie_path)
 
 
-def set_refresh_cookies(response, encoded_refresh_token, max_age=None):
+def set_refresh_cookies(response, encoded_refresh_token, max_age=None, **option_overrides):
     """
     Takes a flask response object, and an encoded refresh token, and configures
     the response to set in the refresh token in a cookie. If `JWT_CSRF_IN_COOKIES`
@@ -215,6 +223,8 @@ def set_refresh_cookies(response, encoded_refresh_token, max_age=None):
                     Otherwise, it will use this as the cookies `max-age`.
                     Values should be the number of seconds (as an integer).
     """
+    config = build_config(**option_overrides)
+
     if not config.jwt_in_cookies:
         raise RuntimeWarning("set_refresh_cookies() called without "
                              "'JWT_TOKEN_LOCATION' configured to use cookies")
@@ -239,13 +249,15 @@ def set_refresh_cookies(response, encoded_refresh_token, max_age=None):
                             path=config.refresh_csrf_cookie_path)
 
 
-def unset_jwt_cookies(response):
+def unset_jwt_cookies(response, **option_overrides):
     """
     Takes a flask response object, and configures it to unset (delete) JWTs
     stored in cookies.
 
     :param response: The Flask response object to delete the JWT cookies in.
     """
+    config = build_config(**option_overrides)
+
     if not config.jwt_in_cookies:
         raise RuntimeWarning("unset_refresh_cookies() called without "
                              "'JWT_TOKEN_LOCATION' configured to use cookies")
