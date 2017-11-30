@@ -60,17 +60,18 @@ def get_jti(encoded_token):
     return decode_token(encoded_token).get('jti')
 
 
-def decode_token(encoded_token, csrf_value=None):
+def decode_token(encoded_token, csrf_value=None, decode_key=None):
     """
     Returns the decoded token (python dict) from an encoded JWT. This does all
     the checks to insure that the decoded token is valid before returning it.
 
     :param encoded_token: The encoded JWT to decode into a python dict.
-    :param csrf_value: Expected CSRF double submit value (optional)
+    :param csrf_value: Expected CSRF double submit value (optional).
+    :param decode_key: Use a different key to decode the token (optional).
     """
     return decode_jwt(
         encoded_token=encoded_token,
-        secret=config.decode_key,
+        decode_key=decode_key or config.decode_key,
         algorithm=config.algorithm,
         identity_claim_key=config.identity_claim_key,
         user_claims_key=config.user_claims_key,

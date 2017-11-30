@@ -84,13 +84,13 @@ def encode_refresh_token(identity, secret, algorithm, expires_delta, csrf,
     return _encode_jwt(token_data, expires_delta, secret, algorithm)
 
 
-def decode_jwt(encoded_token, secret, algorithm, identity_claim_key,
+def decode_jwt(encoded_token, decode_key, algorithm, identity_claim_key,
                user_claims_key, csrf_value=None):
     """
     Decodes an encoded JWT
 
     :param encoded_token: The encoded JWT string to decode
-    :param secret: Secret key used to encode the JWT
+    :param decode_key: Secret key used to encode the JWT
     :param algorithm: Algorithm used to encode the JWT
     :param identity_claim_key: expected key that contains the identity
     :param user_claims_key: expected key that contains the user claims
@@ -98,7 +98,7 @@ def decode_jwt(encoded_token, secret, algorithm, identity_claim_key,
     :return: Dictionary containing contents of the JWT
     """
     # This call verifies the ext, iat, and nbf claims
-    data = jwt.decode(encoded_token, secret, algorithms=[algorithm])
+    data = jwt.decode(encoded_token, decode_key, algorithms=[algorithm])
 
     # Make sure that any custom claims we expect in the token are present
     if 'jti' not in data:
