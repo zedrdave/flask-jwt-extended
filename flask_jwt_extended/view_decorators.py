@@ -2,7 +2,7 @@ from functools import wraps
 from datetime import datetime
 from calendar import timegm
 
-from flask import request
+from flask import request, current_app
 try:
     from flask import _app_ctx_stack as ctx_stack
 except ImportError:  # pragma: no cover
@@ -15,7 +15,7 @@ from flask_jwt_extended.exceptions import (
 )
 from flask_jwt_extended.utils import (
     decode_token, has_user_loader, user_loader, verify_token_claims,
-    verify_token_not_blacklisted, verify_token_type, has_fake_token_callback
+    verify_token_not_blacklisted, verify_token_type, has_fake_token_callback, fake_token
 )
 
 
@@ -171,13 +171,13 @@ def _decode_jwt_from_cookies(request_type):
 
 
 def _decode_jwt_from_request(request_type):
-    #
+    # Check for the presence of _fake_token_callback and runs it instead of trying to retrieve token (provided app.debug is True)
     if has_fake_token_callback():
-        from flask import current_app
         if current_app.debug:
-            return {id: 1}
+            return fake_token(request_type)
         else:
-            raise("ignoring _fake_token_callback, as app.debug is not True")
+            import warnings
+            warnings.warn("ignoring _fake_token_callback, as app.debug is False")
 
     # We have three cases here, having jwts in both cookies and headers is
     # valid, or the jwt can only be saved in one of cookies or headers. Check

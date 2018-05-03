@@ -186,6 +186,10 @@ def has_fake_token_callback():
     jwt_manager = _get_jwt_manager()
     return jwt_manager._fake_token_callback is not None
 
+def fake_token(*args, **kwargs):
+    jwt_manager = _get_jwt_manager()
+    return jwt_manager._fake_token_callback(*args, **kwargs)
+
 def get_csrf_token(encoded_token):
     """
     Returns the CSRF double submit token from an encoded JWT.
