@@ -15,7 +15,7 @@ from flask_jwt_extended.exceptions import (
 )
 from flask_jwt_extended.utils import (
     decode_token, has_user_loader, user_loader, verify_token_claims,
-    verify_token_not_blacklisted, verify_token_type
+    verify_token_not_blacklisted, verify_token_type, has_fake_token_callback
 )
 
 
@@ -171,6 +171,14 @@ def _decode_jwt_from_cookies(request_type):
 
 
 def _decode_jwt_from_request(request_type):
+    #
+    if has_fake_token_callback():
+        from flask import current_app
+        if current_app.debug:
+            return {id: 1}
+        else:
+            raise("ignoring _fake_token_callback, as app.debug is not True")
+
     # We have three cases here, having jwts in both cookies and headers is
     # valid, or the jwt can only be saved in one of cookies or headers. Check
     # all cases here.

@@ -182,6 +182,9 @@ def verify_token_claims(jwt_data):
     if not jwt_manager._claims_verification_callback(user_claims):
         raise UserClaimsVerificationError('User claims verification failed')
 
+def has_fake_token_callback():
+    jwt_manager = _get_jwt_manager()
+    return jwt_manager._fake_token_callback is not None
 
 def get_csrf_token(encoded_token):
     """

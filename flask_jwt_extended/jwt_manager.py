@@ -55,6 +55,9 @@ class JWTManager(object):
         self._claims_verification_callback = default_claims_verification_callback
         self._claims_verification_failed_callback = default_claims_verification_failed_callback
 
+        # Optional callback to bypass token check (only in debug mode)
+        self._fake_token_callback = None
+
         # Register this extension with the flask app now (if it is provided)
         if app is not None:
             self.init_app(app)
@@ -400,4 +403,3 @@ class JWTManager(object):
             json_encoder=config.json_encoder
         )
         return access_token
-
