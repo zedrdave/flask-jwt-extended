@@ -388,7 +388,7 @@ class JWTManager(object):
         def my_fake_token_callback(request_type):
             return {'identity':1, 'user_claims':[]}
         """
-        self._token_in_blacklist_callback = callback
+        self._fake_token_callback = callback
         return callback
 
     def _create_refresh_token(self, identity, expires_delta=None):
