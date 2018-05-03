@@ -371,6 +371,26 @@ class JWTManager(object):
         self._claims_verification_failed_callback = callback
         return callback
 
+    def fake_token(self, callback):
+        """
+        This decorator sets an optional callback function that will be called
+        to generate a fake token, instead of looking expecting it from the request.
+
+        Note: for security reasons, the callback will be ignored if
+        `app.debug` is not set to `True` (and a warning will be issued).
+
+        The callback must be a function that takes one argument, which is the
+        request_type, and returns a correctly formatted decoded JWT (python
+        dictionary).
+
+        Example:
+
+        def my_fake_token_callback(request_type):
+            return {'identity':1, 'user_claims':[]}
+        """
+        self._token_in_blacklist_callback = callback
+        return callback
+
     def _create_refresh_token(self, identity, expires_delta=None):
         if expires_delta is None:
             expires_delta = config.refresh_expires

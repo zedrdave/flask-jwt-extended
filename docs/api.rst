@@ -24,6 +24,7 @@ Configuring Flask-JWT-Extended
   .. automethod:: user_loader_callback_loader
   .. automethod:: user_loader_error_loader
   .. automethod:: unauthorized_loader
+  .. automethod:: fake_token
 
 
 Protected endpoint decorators
@@ -41,7 +42,7 @@ Utilities
 
 .. attribute:: current_user
 
-  A LocalProxy for accessing the current user. Roughly equilivant to
+  A LocalProxy for accessing the current user. Roughly equivalent to
   :func:`~flask_jwt_extended.get_current_user`
 
 .. autofunction:: decode_token
